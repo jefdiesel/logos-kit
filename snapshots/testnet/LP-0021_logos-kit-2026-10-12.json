@@ -1,0 +1,84 @@
+{
+  "distinctAuthors": 1,
+  "entries": [
+    {
+      "author": "4gH6dnH1qqPxHLd76sWyvUTtH48anmLLYSA8EUTKLZAN",
+      "balance": "998824896",
+      "hasPriorActivity": true,
+      "index": 0,
+      "month": "2026-10",
+      "postBlock": 12004,
+      "postTx": "b84ccbfccd912190e078d517d35f96de812cca1aba5a97606fec5ca3f7b4d07d",
+      "priorTxs": [
+        {
+          "block": 11969,
+          "hash": "088bbef010a6173f640ae6734583dc3bfb34e17c657f2bb248ce6aed74990ba0",
+          "program": "11111111111111111111111111111111"
+        },
+        {
+          "block": 11978,
+          "hash": "87d2e22c56c54b26fb5bc1194edf07984c3f0af7b6a17a8ab1d3b92614c80d8f"
+        },
+        {
+          "block": 11991,
+          "hash": "2e048674c6653b17c2f8e9a37605ad6e7fb83fbc96fa61630226c3f87d37386e",
+          "program": "AxDdLwqkWgR9qaSctvABV1ZtvWJJyzXB8199xZueifPj"
+        },
+        {
+          "block": 11994,
+          "hash": "5f5e5fdd846bdb99ec08d3cce1cd58fc8de9b4a83914669f450faefd94035811",
+          "program": "AxDdLwqkWgR9qaSctvABV1ZtvWJJyzXB8199xZueifPj"
+        },
+        {
+          "block": 12002,
+          "hash": "97b2463e4e30ff4203f0d05ce7b4ef17909064e220bb712b66980beed0d9e2d5"
+        }
+      ],
+      "program": "5YoH3xjhgeKt2mcJXW7c31bqDNCWWA4CRJxVdvzFvVef",
+      "text": "Logos Kit end to end on the LEZ 0.3 preview network.",
+      "time": "2026-10-06 02:12:31 UTC",
+      "timestampMs": 1791252751187,
+      "username": "preview-e2e"
+    }
+  ],
+  "generatedMs": 1791819137322,
+  "months": [
+    {
+      "count": 1,
+      "month": "2026-10"
+    }
+  ],
+  "programs": [
+    {
+      "account": "5YoH3xjhgeKt2mcJXW7c31bqDNCWWA4CRJxVdvzFvVef",
+      "consistent": true,
+      "count": 1,
+      "immutable": true,
+      "monthly": [
+        {
+          "count": 1,
+          "month": "2026-10"
+        }
+      ],
+      "pages": 1
+    }
+  ],
+  "repeatAuthors": [],
+  "submission": "LP-0021/logos-kit",
+  "target": {
+    "immutable": true,
+    "met": false,
+    "monthsMet": false,
+    "perMonth": 30,
+    "qualified": 1,
+    "qualifiedMonthsMet": false,
+    "qualifiedTotalMet": false,
+    "total": 150,
+    "totalMet": false
+  },
+  "tip": {
+    "block": 13982,
+    "hash": "24a2b551513af6911b1de4720ffb248b4027ee851a742ba94aaa56a799809090",
+    "timestampMs": 1791352286660
+  }
+}
