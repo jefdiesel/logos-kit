@@ -1,8 +1,7 @@
 # Once a day:
-# - fingerprint the official LEZ testnet and our preview network; warn if the
-#   official one stops reporting 0.3 or halts (the rollback criteria in
-#   docs/dev/cutover-0.3.md); fail if the preview network is down, halted or
-#   not 0.3;
+# - fingerprint the official LEZ testnet; warn if it stops reporting 0.3 or
+#   halts (the rollback criteria in docs/dev/cutover-0.3.md). Our own preview
+#   network was retired after the cutover (docs/dev/status-2026-10-14.md);
 # - export the testimonial evidence (distinct authors, months, each author's
 #   prior activity) from chain data and commit it to the `evidence` branch:
 #   snapshots/<zone>/<submission>-<date>.json, plus the block-scan cache so
@@ -21,7 +20,6 @@ env:
   CARGO_INCREMENTAL: "0"
   CARGO_PROFILE_DEV_DEBUG: "0"
   OFFICIAL: https://testnet.lez.logos.co
-  PREVIEW: https://lez.84.46.247.92.sslip.io
 
 jobs:
   daily:
@@ -52,17 +50,14 @@ jobs:
       - name: Build the CLI and xtask
         run: cargo build -q -p logos-kit-cli -p xtask
 
-      - name: Fingerprint both networks
+      - name: Fingerprint the official testnet
         id: fp
         run: |
           mkdir -p out
           cargo xtask fingerprint "$OFFICIAL" > out/official.json || echo '{"version":"unreachable"}' > out/official.json
-          cargo xtask fingerprint "$PREVIEW" > out/preview.json || echo '{"version":"unreachable"}' > out/preview.json
-          for n in official preview; do
-            echo "$n=$(jq -r .version out/$n.json)" >> "$GITHUB_OUTPUT"
-            echo "${n}_halted=$(jq -r 'if has("halted") then (.halted | tostring) else "unknown" end' out/$n.json)" >> "$GITHUB_OUTPUT"
-            jq -c '{version, halted, lastBlockId, headAgeSecs}' out/$n.json
-          done
+          echo "official=$(jq -r .version out/official.json)" >> "$GITHUB_OUTPUT"
+          echo "official_halted=$(jq -r 'if has("halted") then (.halted | tostring) else "unknown" end' out/official.json)" >> "$GITHUB_OUTPUT"
+          jq -c '{version, halted, lastBlockId, headAgeSecs}' out/official.json
 
       - name: Official testnet still runs 0.3
         run: |
@@ -83,7 +78,7 @@ jobs:
           export LOGOS_KIT_HOME="$RUNNER_TEMP/wallet" LOGOS_KIT_PASSWORD=daily SUPPRESS_VERBOSE_PRINTS=1
           LK=target/debug/logos-kit
           "$LK" init --json > /dev/null 2>&1
-          for zone in preview testnet; do
+          for zone in testnet; do
             programs=$(jq -r --arg c "lez:$zone" '.[] | select(.name == "testimonial" and .chain == $c) | "--program=" + .account' registry/programs.json)
             [ -n "$programs" ] || { echo "no lez:$zone testimonial deployment yet"; continue; }
             # shellcheck disable=SC2086
@@ -111,7 +106,3 @@ jobs:
           path: out/
           retention-days: 90
 
-      - name: Preview network is healthy
-        run: |
-          [ "${{ steps.fp.outputs.preview }}" = "0.3" ] || { echo "::error::preview network reports '${{ steps.fp.outputs.preview }}'"; exit 1; }
-          [ "${{ steps.fp.outputs.preview_halted }}" = "false" ] || { echo "::error::preview network halted"; exit 1; }
