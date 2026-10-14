@@ -4,10 +4,11 @@ The single place to resume from after a context clear.
 
 **Resume order:**
 1. memory `MEMORY.md`
-2. this file
-3. `docs/dev/PLAN.md` (the current stage's section)
-4. `docs/dev/pins.md`
-5. the stage's "copy from" files
+2. `docs/dev/status-2026-10-14.md` (§0 "Start here")
+3. this file
+4. `docs/dev/PLAN-0.4.md` (the plan in force; the current stage's section)
+5. `docs/dev/pins.md`
+6. the stage's "copy from" files
 
 **Rules:**
 - Tick an item only after its proving command passes, and paste the proof next to it.
@@ -15,7 +16,7 @@ The single place to resume from after a context clear.
 - Nothing is pushed, published or deployed without the user's go-ahead.
 - Tests are not a deliverable; only the integration-confidence tests listed in the plan.
 
-**Next action (2026-09-30):** first release is out on the preview network (catalog 0.1.3 / apps 0.1.1, npm 0.1.0, docs live). Open work is listed at the end of "After S8"; the official-testnet switch waits for 0.3 (the daily workflow opens an issue the day it flips; runbook `docs/dev/cutover-0.3.md`). Then S9 leftovers and the adoption track.
+**Next action (2026-10-14):** Logos moved every prize to testnet 0.4 and reset the live testnet onto LEZ 0.3.1, which removed the token, ATA and AMM programs (`docs/dev/status-2026-10-14.md`). The plan in force is `docs/dev/PLAN-0.4.md` v2, reviewed by Codex (`docs/reviews/plan-0.4/`). Next: merge PR #10 (stage 0), then stage R (`main` back on 0.3.1, native LGO) and stage X (transaction states + explorer), with the F1 protocol spikes and the N3a SDK contract in parallel. Check the Discord thread "LEZ 0.3 → 0.4: why the model is changing" for replies to our two posts first.
 
 ---
 
