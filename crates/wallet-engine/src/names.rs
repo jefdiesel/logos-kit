@@ -32,6 +32,7 @@ const TAG_LEN: usize = 16;
 const GRACE_MS: u64 = 30 * 24 * 60 * 60 * 1000;
 
 #[derive(BorshDeserialize)]
+#[cfg_attr(test, derive(borsh::BorshSerialize))]
 struct NameRecord {
     _version: u8,
     _owner_tag: [u8; 32],
@@ -40,6 +41,7 @@ struct NameRecord {
 }
 
 #[derive(BorshDeserialize)]
+#[cfg_attr(test, derive(borsh::BorshSerialize))]
 struct Profile {
     name: String,
     account: Option<[u8; 32]>,
@@ -200,5 +202,107 @@ mod tests {
         assert!(target("jef", &derive("logos").1, &record, 1_792_100_000_000).is_err());
         assert!(target("jef", &key, &[], 1_792_100_000_000).is_err());
         assert!(target("jef", &key, &record, 1_900_000_000_000).is_err());
+    }
+
+    /// A record sealed the way an LNS client seals it, for names the testnet lacks.
+    fn sealed_record(label: &str, profile: &Profile) -> Vec<u8> {
+        let (_, key) = derive(label);
+        let mut plain = borsh::to_vec(profile).unwrap();
+        plain.resize(plain.len().div_ceil(256) * 256, 0);
+        let nonce = [7u8; NONCE_LEN];
+        let mut sealed = nonce.to_vec();
+        sealed.extend(
+            Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key))
+                .encrypt(
+                    Nonce::from_slice(&nonce),
+                    Payload {
+                        msg: &plain,
+                        aad: RECORD_AAD,
+                    },
+                )
+                .unwrap(),
+        );
+        borsh::to_vec(&NameRecord {
+            _version: 3,
+            _owner_tag: [0; 32],
+            expires: 1_800_000_000_000,
+            sealed,
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn a_public_only_name_pays_its_account_and_private_keys_win_over_it() {
+        let account = [9u8; 32];
+        let public_only = Profile {
+            name: "shop".into(),
+            account: Some(account),
+            npk: None,
+            vpk: Vec::new(),
+            _texts: Vec::new(),
+        };
+        let (_, key) = derive("shop");
+        let now = 1_792_100_000_000;
+        assert_eq!(
+            target("shop", &key, &sealed_record("shop", &public_only), now).unwrap(),
+            NameTarget::Public(AccountId::new(account))
+        );
+        let both = Profile {
+            npk: Some([1; 32]),
+            vpk: vec![2; 1184],
+            ..public_only
+        };
+        assert!(matches!(
+            target("shop", &key, &sealed_record("shop", &both), now).unwrap(),
+            NameTarget::Private { .. }
+        ));
+        assert!(is_name("JEF.lez") && is_name(" jef.lez ") && !is_name("jef"));
+    }
+
+    /// Reads the live LEZ testnet: `cargo test -p wallet-engine --lib names:: -- --ignored`.
+    #[test]
+    #[ignore = "reads the live LEZ testnet"]
+    fn resolves_names_on_the_testnet() {
+        let registry: AccountId = TESTNET_REGISTRY.parse().unwrap();
+        let read = |label: &str| -> Vec<u8> {
+            let (id, _) = derive(label);
+            let body = serde_json::json!({
+                "jsonrpc": "2.0", "id": 1, "method": "getAccount",
+                "params": [record_address(&registry, &id).to_string()],
+            });
+            let reply: serde_json::Value = ureq::post("https://testnet.lez.logos.co")
+                .send_json(body)
+                .unwrap()
+                .body_mut()
+                .read_json()
+                .unwrap();
+            reply["result"]["data"]["shards"][TESTNET_REGISTRY]
+                .as_array()
+                .map(|bytes| bytes.iter().map(|b| b.as_u64().unwrap() as u8).collect())
+                .unwrap_or_default()
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        for label in ["jef", "logos", "uxtest-1015", "lnstest-pub"] {
+            let (_, key) = derive(label);
+            let target = target(label, &key, &read(label), now)
+                .unwrap_or_else(|e| panic!("{label}.lez: {e}"));
+            assert!(
+                matches!(target, NameTarget::Private { ref vpk, .. } if vpk.len() == 1184),
+                "{label}.lez"
+            );
+        }
+        let (_, key) = derive("lns-unregistered-check");
+        assert!(
+            target(
+                "lns-unregistered-check",
+                &key,
+                &read("lns-unregistered-check"),
+                now
+            )
+            .is_err()
+        );
     }
 }
