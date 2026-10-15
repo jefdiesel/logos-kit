@@ -40,6 +40,9 @@ chacha20poly1305 = "0.10.1"
 tempfile = "3"
 zeroize = { version = "1.9", features = ["derive"] }
 sha2 = "0.10"
+# LNS (`.lez` names): AES-256-GCM is on the aead 0.5 line chacha20poly1305 already uses.
+aes-gcm = "0.10.3"
+pbkdf2 = "0.12"
 tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "time", "macros"] }
 ureq.workspace = true
 hex = "0.4.3"
