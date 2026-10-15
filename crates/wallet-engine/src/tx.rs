@@ -956,10 +956,33 @@ async fn prepare_transfer(
         to,
         amount,
         token,
-        mut to_keys,
+        to_keys,
     } = intent
     else {
         unreachable!("transfer intent");
+    };
+    // A `.lez` name (LNS) becomes the private keys or the public account it publishes,
+    // here, so routing, approval and the request hash all see the resolved recipient.
+    let (to, mut to_keys) = match to {
+        Some(name) if to_keys.is_none() && crate::names::is_name(&name) => {
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+            match crate::names::resolve(core, &name, now_ms).await? {
+                crate::names::NameTarget::Private { npk, vpk } => (
+                    None,
+                    Some(RecipientKeys {
+                        npk: hex::encode(npk),
+                        vpk: hex::encode(vpk),
+                        identifier: None,
+                    }),
+                ),
+                crate::names::NameTarget::Public(account) => {
+                    (Some(format!("Public/{account}")), None)
+                }
+            }
+        }
+        to => (to, to_keys),
     };
     ensure!(amount > 0, "amount must be more than zero");
     let (from_id, _) = parse_account(&from)?;
