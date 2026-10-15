@@ -182,8 +182,9 @@ enum Command {
 struct SendArgs {
     #[arg(long)]
     from: String,
-    /// Recipient account (yours or public). For someone else's private
-    /// account use --to-keys (or --to-npk/--to-vpk).
+    /// Recipient account (yours or public), or a `.lez` name (LNS), which pays
+    /// the private keys or public account the name publishes. For someone
+    /// else's private account without a name use --to-keys (or --to-npk/--to-vpk).
     #[arg(long)]
     to: Option<String>,
     /// Native: lepta as a whole number (1 LGO = 1000000000 lepta), or LGO
