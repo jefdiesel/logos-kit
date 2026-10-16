@@ -1,0 +1,18 @@
+name: LNS live
+on:
+  push:
+    branches: ["ci/lns-live"]
+  workflow_dispatch:
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jlumbroso/free-disk-space@v2
+        with: { android: true, dotnet: true, haskell: true, large-packages: false, docker-images: true }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev clang cmake ninja-build pkg-config libssl-dev unzip
+      - run: scripts/lez-vendor.sh
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with: { build-warnings: "", cache-shared-key: workspace-debug }
+      - run: cargo test -p wallet-engine --lib names:: -- --include-ignored --nocapture
