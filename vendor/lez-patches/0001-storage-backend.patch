@@ -20,71 +20,63 @@ configured backend.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- lez/wallet/src/lib.rs     |  35 +++++++++++-
+ lez/wallet/src/lib.rs     |  27 ++++++++-
  lez/wallet/src/storage.rs | 114 +++++++++++++++++++++++++++-----------
- 2 files changed, 115 insertions(+), 34 deletions(-)
+ 2 files changed, 107 insertions(+), 34 deletions(-)
 
 diff --git a/lez/wallet/src/lib.rs b/lez/wallet/src/lib.rs
-index 5d03fc0..8aa7611 100644
+index d44493f..0c39a76 100644
 --- a/lez/wallet/src/lib.rs
 +++ b/lez/wallet/src/lib.rs
 @@ -32,7 +32,7 @@ use lee_core::{
  };
  use log::warn;
- use sequencer_service_rpc::{RpcClient as _, SequencerClient};
+ use sequencer_service_rpc::{RpcClient as _, SequencerClient, SequencerClientBuilder};
 -use storage::Storage;
 +use storage::{FileBackend, Storage, StorageBackend};
  use tokio::io::AsyncWriteExt as _;
  use url::Url;
  
-@@ -128,6 +128,7 @@ pub struct WalletCore {
+@@ -126,6 +126,7 @@ pub struct WalletCore {
  
      storage: Storage,
      storage_path: PathBuf,
 +    storage_backend: Box<dyn StorageBackend>,
  
-     statistics_path: PathBuf,
-     statistics: HashMap<Url, Statistics>,
-@@ -184,6 +185,30 @@ impl WalletCore {
+     sequencer_client: SequencerClient,
+ }
+@@ -162,6 +163,22 @@ impl WalletCore {
          Ok((wallet, mnemonic))
      }
  
 +    /// Construct wallet persisting `storage` through `storage_backend` instead of the plaintext
 +    /// file. `storage` is usually [`Storage::load_from`] the same backend, or a fresh
 +    /// [`Storage::new`]; `storage_path` is only reported by [`Self::storage_path`] and in messages.
-+    pub async fn new_with_storage_backend(
++    pub fn new_with_storage_backend(
 +        config_path: PathBuf,
 +        storage_path: PathBuf,
-+        statistics_path: PathBuf,
 +        config_overrides: Option<WalletConfigOverrides>,
 +        storage: Storage,
 +        storage_backend: Box<dyn StorageBackend>,
 +    ) -> Result<Self> {
-+        let mut wallet = Self::new(
-+            config_path,
-+            storage_path,
-+            statistics_path,
-+            config_overrides,
-+            storage,
-+        )
-+        .await?;
++        let mut wallet = Self::new(config_path, storage_path, config_overrides, storage)?;
 +        wallet.storage_backend = storage_backend;
 +
 +        Ok(wallet)
 +    }
 +
-     async fn new(
+     fn new(
          config_path: PathBuf,
          storage_path: PathBuf,
-@@ -216,6 +241,7 @@ impl WalletCore {
+@@ -200,6 +217,7 @@ impl WalletCore {
              config_overrides,
              config,
              storage,
 +            storage_backend: Box::new(FileBackend::new(storage_path.clone())),
              storage_path,
-             statistics_path,
-             statistics,
-@@ -279,10 +305,15 @@ impl WalletCore {
+             sequencer_client,
+         })
+@@ -252,10 +270,15 @@ impl WalletCore {
          self.storage.restore(mnemonic, password)
      }
  

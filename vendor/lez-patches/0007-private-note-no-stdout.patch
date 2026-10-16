@@ -13,10 +13,10 @@ error instead.
  1 file changed, 13 insertions(+), 9 deletions(-)
 
 diff --git a/lez/wallet/src/lib.rs b/lez/wallet/src/lib.rs
-index a286621..f795280 100644
+index 121d680..8e030fd 100644
 --- a/lez/wallet/src/lib.rs
 +++ b/lez/wallet/src/lib.rs
-@@ -811,15 +811,19 @@ impl WalletCore {
+@@ -719,15 +719,19 @@ impl WalletCore {
                          );
                          continue;
                      };

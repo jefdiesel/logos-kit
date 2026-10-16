@@ -29,7 +29,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 105 insertions(+), 23 deletions(-)
 
 diff --git a/lez/wallet/src/lib.rs b/lez/wallet/src/lib.rs
-index 1999edb..a286621 100644
+index 1ff8067..121d680 100644
 --- a/lez/wallet/src/lib.rs
 +++ b/lez/wallet/src/lib.rs
 @@ -23,7 +23,7 @@ use key_protocol::key_management::key_tree::chain_index::ChainIndex;
@@ -41,7 +41,7 @@ index 1999edb..a286621 100644
          message::{EncryptedAccountData, Message},
      },
  };
-@@ -97,6 +97,27 @@ pub struct PreparedPublicTx {
+@@ -95,6 +95,27 @@ pub struct PreparedPublicTx {
      keycard_pin: Option<String>,
  }
  
@@ -69,7 +69,7 @@ index 1999edb..a286621 100644
  #[derive(Debug, thiserror::Error)]
  pub enum ExecutionFailureKind {
      #[error("Failed to get data from sequencer")]
-@@ -862,6 +883,22 @@ impl WalletCore {
+@@ -770,6 +791,22 @@ impl WalletCore {
          program: &ProgramWithDependencies,
          tx_pre_check: impl FnOnce(&[SelectedShard]) -> Result<(), ExecutionFailureKind>,
      ) -> Result<(HashType, Vec<SharedSecretKey>), ExecutionFailureKind> {
@@ -92,7 +92,7 @@ index 1999edb..a286621 100644
          let acc_manager = account_manager::AccountManager::new(self, accounts).await?;
  
          tx_pre_check(&acc_manager.selected_shards())?;
-@@ -873,7 +910,6 @@ impl WalletCore {
+@@ -781,7 +818,6 @@ impl WalletCore {
              );
          }
  
@@ -100,7 +100,7 @@ index 1999edb..a286621 100644
          let input = ProvingInput {
              shard_selectors: acc_manager.shard_selectors(),
              signers: acc_manager.signers(),
-@@ -883,24 +919,36 @@ impl WalletCore {
+@@ -791,24 +827,36 @@ impl WalletCore {
              ciphertext_padding: Some(CIPHERTEXT_PAD_SIZE),
          };
  
@@ -153,7 +153,7 @@ index 1999edb..a286621 100644
  
          let witness_set =
              lee::privacy_preserving_transaction::witness_set::WitnessSet::from_raw_parts(
-@@ -910,11 +958,6 @@ impl WalletCore {
+@@ -818,11 +866,6 @@ impl WalletCore {
  
          let tx = PrivacyPreservingTransaction::new(message, witness_set);
  
@@ -162,10 +162,10 @@ index 1999edb..a286621 100644
 -            .map(|keys| keys.ssk)
 -            .collect();
 -
-         let call_res = first_success_or_error(
-             self.multi_sequencer_client
-                 .metered_send_transaction(LeeTransaction::PrivacyPreserving(tx))
-@@ -1306,6 +1349,45 @@ impl PreparedPublicTx {
+         let call_res = self
+             .sequencer_client
+             .send_transaction(LeeTransaction::PrivacyPreserving(tx))
+@@ -1212,6 +1255,45 @@ impl PreparedPublicTx {
      }
  }
  

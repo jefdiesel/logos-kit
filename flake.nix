@@ -2,7 +2,7 @@
   description = "Logos Kit: wallet engine (C ABI) for the Basecamp module, plus dev shell";
 
   # Ported from LEZ's own flake at the pinned rev (logos-execution-zone
-  # v0.3.0 db66590, flake.nix): same crane build, same circuit/rapidsnark pins, the
+  # v0.3.1 1a003bf, flake.nix): same crane build, same circuit/rapidsnark pins, the
   # pre-fetched risc0 recursion artifact and the Metal xcrun stub. Keep these
   # pins in step with that file whenever the LEZ rev moves (docs/dev/pins.md).
   inputs = {
@@ -19,7 +19,7 @@
     # LEZ at LEZ_REV (crates/wallet-engine/src/lib.rs). Patched below with
     # vendor/lez-patches into the same tree `cargo xtask lez-vendor` produces.
     lez-src = {
-      url = "github:logos-blockchain/logos-execution-zone/db66590ab821a4e142c211017a3866d007f6fa77";
+      url = "github:logos-blockchain/logos-execution-zone/1a003bfbfb89fcf987f62975cd08a401169e1b8c";
       flake = false;
     };
   };
