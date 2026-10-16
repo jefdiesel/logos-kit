@@ -44,4 +44,4 @@ jobs:
       # E2E tests skip themselves without LK_E2E_SEQUENCER (e2e.yml runs them).
       - run: cargo test --workspace
       # Fork test branch only: LNS names on the live testnet.
-      - run: cargo test -p wallet-engine --lib names:: -- --include-ignored --nocapture
+      - run: 'cargo test -p wallet-engine --lib names:: -- --include-ignored --nocapture'
