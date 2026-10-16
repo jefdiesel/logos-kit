@@ -53,7 +53,6 @@ export interface BlockHeader {
   prevHash: string
   /** Unix ms. */
   timestamp: number
-  producer: string
 }
 
 export interface Block {
@@ -73,10 +72,9 @@ export function decodeBlock(b64: string): Block {
   const prevHash = toHex(r.fixed(32))
   const hash = toHex(r.fixed(32))
   const timestamp = Number(r.u64())
-  const producer = toHex(r.fixed(32))
-  r.fixed(64) // producer signature
+  // LEZ v0.3.1 dropped the header's producer key and signature.
   const count = r.u32()
-  const header = { id, hash, prevHash, timestamp, producer }
+  const header = { id, hash, prevHash, timestamp }
   // A private transaction has no length prefix: decoding stops at the first
   // one. Any other decoding error is a real error.
   const transactions: PublicTransaction[] = []

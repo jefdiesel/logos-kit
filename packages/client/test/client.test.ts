@@ -36,7 +36,7 @@ const raw = (f: string) => readFileSync(new URL(f, dir), 'utf8')
 // biome-ignore lint/suspicious/noExplicitAny: fixture JSON
 const result = (f: string): any => (parseJson(raw(f)) as { result: unknown }).result
 const U128_MAX = '340282366920938463463374607431768211455'
-const TX = '2b55e958da92b01ada39fd85a8b8b248e9adc8b2e262a6c959f26eac4eb0f0b9'
+const TX = '5e83f6cba0a4ded1f8a23ee08e16828f9373cb9fce4287094ee33d732e6ef3c3'
 
 describe('lossless JSON', () => {
   it('agrees with JSON.parse on every recorded fixture', () => {
