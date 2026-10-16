@@ -23,18 +23,18 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  create mode 100644 lez/wallet/src/sync_observer.rs
 
 diff --git a/lez/wallet/src/lib.rs b/lez/wallet/src/lib.rs
-index 8aa7611..181e70a 100644
+index 0c39a76..3d9541c 100644
 --- a/lez/wallet/src/lib.rs
 +++ b/lez/wallet/src/lib.rs
-@@ -42,6 +42,7 @@ use crate::{
-     multi_client::{MultiSequencerClient, Statistics, extract_statistics_from_path},
-     poller::{TxPoller, multi_poll},
+@@ -41,6 +41,7 @@ use crate::{
+     config::WalletConfigOverrides,
+     poller::TxPoller,
      storage::key_chain::{NullifierIndex, SharedAccountEntry},
 +    sync_observer::{CliSyncObserver, SyncObserver},
  };
  
  pub mod account;
-@@ -53,6 +54,7 @@ pub mod multi_client;
+@@ -51,6 +52,7 @@ pub mod helperfunctions;
  pub mod poller;
  pub mod program_facades;
  pub mod storage;
@@ -42,7 +42,7 @@ index 8aa7611..181e70a 100644
  
  pub const SUPPRESS_VERBOSE_PRINTS: &str = "SUPPRESS_VERBOSE_PRINTS";
  
-@@ -312,6 +314,13 @@ impl WalletCore {
+@@ -277,6 +279,13 @@ impl WalletCore {
  
      /// Store persistent data at home.
      pub fn store_persistent_data(&self) -> Result<()> {
@@ -56,7 +56,7 @@ index 8aa7611..181e70a 100644
          self.storage
              .save_to(self.storage_backend.as_ref())
              .with_context(|| {
-@@ -319,14 +328,14 @@ impl WalletCore {
+@@ -284,14 +293,14 @@ impl WalletCore {
                      "Failed to store persistent accounts at {}",
                      self.storage_path.display()
                  )
@@ -75,8 +75,8 @@ index 8aa7611..181e70a 100644
 +        )
      }
  
-     /// Rotates multi-client and stores metrics.
-@@ -1036,13 +1045,33 @@ impl WalletCore {
+     /// Store persistent data at home.
+@@ -942,13 +951,33 @@ impl WalletCore {
      }
  
      pub async fn sync_to_latest_block(&mut self) -> Result<u64> {
@@ -113,7 +113,7 @@ index 8aa7611..181e70a 100644
          use futures::TryStreamExt as _;
  
          let last_synced_block = self.storage.last_synced_block();
-@@ -1056,15 +1085,14 @@ impl WalletCore {
+@@ -962,15 +991,14 @@ impl WalletCore {
              return Ok(());
          }
  
@@ -121,7 +121,7 @@ index 8aa7611..181e70a 100644
 +        let first_block = last_synced_block.saturating_add(1);
 +        observer.on_start(first_block..=block_id);
  
-         let poller = self.poller_helm();
+         let poller = self.poller();
 -        let mut blocks =
 -            std::pin::pin!(poller.poll_block_range(last_synced_block.saturating_add(1)..=block_id));
 +        let mut blocks = std::pin::pin!(poller.poll_block_range(first_block..=block_id));
@@ -132,7 +132,7 @@ index 8aa7611..181e70a 100644
          while let Some(block) = blocks.try_next().await? {
              for tx in block.body.transactions {
                  let LeeTransaction::PrivacyPreserving(pp_tx) = &tx else {
-@@ -1079,15 +1107,11 @@ impl WalletCore {
+@@ -985,15 +1013,11 @@ impl WalletCore {
              }
  
              self.storage.set_last_synced_block(block.header.block_id);

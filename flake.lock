@@ -18,17 +18,17 @@
     "lez-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1790727166,
-        "narHash": "sha256-TdYNTXr7tLwq0j7eac8shLcrkDUO7L4TOebhSbbg+p0=",
+        "lastModified": 1791669386,
+        "narHash": "sha256-Tf2YnXIqbAmz2BnEk747WEOnAW6xOlszoe2mn85hRLU=",
         "owner": "logos-blockchain",
         "repo": "logos-execution-zone",
-        "rev": "db66590ab821a4e142c211017a3866d007f6fa77",
+        "rev": "1a003bfbfb89fcf987f62975cd08a401169e1b8c",
         "type": "github"
       },
       "original": {
         "owner": "logos-blockchain",
         "repo": "logos-execution-zone",
-        "rev": "db66590ab821a4e142c211017a3866d007f6fa77",
+        "rev": "1a003bfbfb89fcf987f62975cd08a401169e1b8c",
         "type": "github"
       }
     },

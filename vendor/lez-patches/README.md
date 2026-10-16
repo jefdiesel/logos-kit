@@ -1,8 +1,8 @@
 # LEZ `wallet` crate patches (Logos Kit)
 
 Small, upstreamable patch series against the LEZ `wallet` crate
-(`logos-blockchain/logos-execution-zone` at
-`f7fda38a4428b9989f1db1dbf5d2411484848fd4`), needed so the Logos Kit wallet engine can embed
+(`logos-blockchain/logos-execution-zone` at tag `v0.3.1`,
+`1a003bfbfb89fcf987f62975cd08a401169e1b8c`), needed so the Logos Kit wallet engine can embed
 `wallet::WalletCore` in a Basecamp module and a CLI. Every patch keeps the existing CLI
 behaviour and public API. The old entry points are now built from the new ones.
 
@@ -10,20 +10,20 @@ Apply:
 
 ```sh
 git clone https://github.com/logos-blockchain/logos-execution-zone lez
-cd lez && git checkout f7fda38a4428b9989f1db1dbf5d2411484848fd4
+cd lez && git checkout 1a003bfbfb89fcf987f62975cd08a401169e1b8c
 git am /path/to/logos-kit/vendor/lez-patches/*.patch
 ```
 
 | # | File | Touches | +/- |
 |---|------|---------|-----|
-| 1 | `0001-storage-backend.patch` | `storage.rs`, `lib.rs` | +115 / -34 |
+| 1 | `0001-storage-backend.patch` | `storage.rs`, `lib.rs` | +107 / -34 |
 | 2 | `0002-sync-observer.patch` | new `sync_observer.rs`, `lib.rs` | +106 / -20 |
 | 3 | `0003-public-tx-prepare-sign.patch` | `account_manager.rs`, `lib.rs` | +163 / -62 |
 | 4 | `0004-private-tx-prepare-prove-submit.patch` | `lib.rs` | +105 / -23 |
 | 5 | `0005-keycard-feature.patch` | `Cargo.toml`, `account_manager.rs`, `cli/mod.rs` | +20 / -4 |
 | 6 | `0006-storage-remove-label.patch` | `storage.rs` | +5 / -0 |
-| 7 | `0007-private-note-no-stdout.patch` | `lib.rs` | +8 / -5 |
-| 8 | `0008-low-memory-proving.patch` | `lee/state_machine/src/privacy_preserving_transaction/circuit/mod.rs` | +22 / -0 |
+| 7 | `0007-private-note-no-stdout.patch` | `lib.rs` | +13 / -9 |
+| 8 | `0008-low-memory-proving.patch` | `lee/state_machine/src/privacy_preserving_transaction/circuit/mod.rs` | +20 / -0 |
 
 Most of the lines in patches 3 and 4 are existing function bodies moved into the new
 functions. The series adds no new dependencies.
@@ -53,10 +53,9 @@ impl Storage {
 }
 
 // wallet::WalletCore
-pub async fn new_with_storage_backend(
+pub fn new_with_storage_backend(
     config_path: PathBuf,
     storage_path: PathBuf,              // only used by storage_path() and in messages
-    statistics_path: PathBuf,
     config_overrides: Option<WalletConfigOverrides>,
     storage: Storage,                   // Storage::load_from(&backend) or Storage::new(pw)
     storage_backend: Box<dyn StorageBackend>,
@@ -67,6 +66,11 @@ pub fn set_storage_backend(&mut self, storage_backend: Box<dyn StorageBackend>);
 All saves go through the configured backend, including `store_persistent_data` and the
 per-block save during sync. The save cadence is unchanged. The on-disk format and the error
 messages are also unchanged.
+
+Since the v0.3.1 re-pin, `new_with_storage_backend` is a plain `fn` without
+`statistics_path`, matching upstream's constructors: LEZ v0.3.1 removed the multi-sequencer
+client and its statistics file, and `WalletCore::{new_update_chain, new_init_storage}` are no
+longer `async`.
 
 ## 2. `SyncObserver`: sync progress without stdout
 
@@ -187,9 +191,10 @@ inner programs) apply it. Smaller segments need less memory and take longer, so 
 a machine with little free memory can still prove instead of being killed. `None` restores
 the default; the value is process-wide and read when a proof starts.
 
-## Verification (at the tip of the series, macOS, toolchain 1.98.1)
+## Verification (at the tip of the series on `v0.3.1`, macOS arm64, toolchain 1.98.1)
 
-Run with `RISC0_SKIP_BUILD_KERNELS=1 RISC0_SKIP_BUILD=1`, and `RISC0_DEV_MODE=1` for tests:
+Re-run 2026-10-15 for the `v0.3.1` re-pin. In a LEZ checkout with the series applied, with
+`RISC0_SKIP_BUILD_KERNELS=1 RISC0_SKIP_BUILD=1`:
 
 | Command | Result |
 |---------|--------|
@@ -197,14 +202,24 @@ Run with `RISC0_SKIP_BUILD_KERNELS=1 RISC0_SKIP_BUILD=1`, and `RISC0_DEV_MODE=1`
 | `cargo check -p wallet --no-default-features` | Finished, exit 0 |
 | `cargo clippy -p wallet --all-targets` | Finished, no warnings, exit 0 |
 | `cargo clippy -p wallet --all-targets --no-default-features` | Finished, no warnings, exit 0 |
-| `cargo clippy -p wallet --all-targets --features keycard-debug` | Finished, no warnings |
-| `cargo test -p wallet --lib` | `test result: ok. 69 passed; 0 failed` |
-| `cargo test -p wallet --lib --no-default-features` | `test result: ok. 69 passed; 0 failed` |
-| `cargo check -p wallet-ffi` (downstream consumer) | Finished |
+| `cargo check -p wallet-ffi` (downstream consumer, in `vendor/lez`) | Finished, exit 0 (without the `RISC0_SKIP_*` variables it fails in `risc0-sys`, which needs Xcode's Metal compiler) |
 
-Clippy was clean after every individual patch. `git am` of the five files onto `f7fda38`
-reproduces the branch exactly. Formatting uses stable `rustfmt`, because the repo's nightly-only
-rustfmt options were unavailable.
+In `vendor/lez` as produced by `scripts/lez-vendor.sh` (no `RISC0_SKIP_*` variables):
+
+| Command | Result |
+|---------|--------|
+| `cargo build --release -p wallet` | Finished, exit 0 |
+| `RISC0_DEV_MODE=1 cargo test -p wallet --lib` | `test result: ok. 49 passed; 0 failed` |
+| `RISC0_DEV_MODE=1 cargo test -p wallet --lib --no-default-features` | `test result: ok. 49 passed; 0 failed` |
+| `cargo clippy -p wallet --all-targets --features keycard-debug` | Finished, no warnings, exit 0 |
+
+v0.3.1 has 49 wallet unit tests (v0.3.0 had 69); upstream deleted the tests along with the
+multi-sequencer client and the token/AMM/ATA facades. The series adds no tests of its own.
+
+Clippy was checked at the tip only, not after each patch. `scripts/lez-vendor.sh` (`git am`
+of the eight files onto `1a003bf`) reproduces the branch's tree exactly, and re-exporting
+from that `vendor/lez` gives back the same eight files. Formatting uses stable `rustfmt`,
+because the repo's nightly-only rustfmt options were unavailable.
 
 ## Upstream PR summary
 
@@ -231,5 +246,5 @@ rustfmt options were unavailable.
 >
 > Each existing entry point is now a composition of the new ones. The CLI's output, on-disk
 > format, signature ordering and errors are unchanged. There are no new dependencies. Clippy
-> passes with the workspace lints, and all 69 wallet unit tests pass with and without default
+> passes with the workspace lints, and all 49 wallet unit tests pass with and without default
 > features.
