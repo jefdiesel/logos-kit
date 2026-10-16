@@ -1,0 +1,49 @@
+name: LNS pay
+
+on:
+  push:
+    branches: ["lnspay/**"]
+
+env:
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  pay:
+    name: logos-kit send --to jef.lez on the live testnet
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+      - name: Free disk
+        uses: jlumbroso/free-disk-space@v2
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+      - name: System packages
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev clang cmake ninja-build pkg-config libssl-dev unzip jq
+      - name: Vendor LEZ
+        run: scripts/lez-vendor.sh
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          build-warnings: ""
+      - name: Build the CLI (release, for proving)
+        run: cargo build --release -p logos-kit-cli
+      - name: Fund a fresh wallet and pay jef.lez privately
+        env:
+          LOGOS_KIT_PASSWORD: ci-test-only
+        run: |
+          set -euo pipefail
+          export LOGOS_KIT_HOME="$(mktemp -d)"
+          K=./target/release/logos-kit
+          $K init --json 2>/dev/null
+          A=$($K account new --json | jq -r .accountId)
+          P=$($K account new --private --json | jq -r .accountId)
+          echo "public $A  private $P"
+          $K faucet "$P" --via "$A" --yes --json
+          $K sync
+          $K balance "$P"
+          time $K send --from "$P" --to jef.lez --amount 1000 --yes --json | tee send.json
+          test "$(jq -r .outcome send.json)" = success
