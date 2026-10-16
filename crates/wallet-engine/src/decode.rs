@@ -51,8 +51,11 @@ impl Default for Decoders {
         Self {
             entries: vec![
                 (NATIVE_TOKEN_PROGRAM_ID, Decoder::Native),
-                (programs::token_account_id(), Decoder::Token),
-                (programs::ata_account_id(), Decoder::AssociatedToken),
+                (token_core::token_account_id(), Decoder::Token),
+                (
+                    associated_token_account_core::ata_account_id(),
+                    Decoder::AssociatedToken,
+                ),
             ],
             zone: String::new(),
             verified: Vec::new(),
@@ -171,7 +174,7 @@ pub fn public(message: &PublicMessage, decoders: &Decoders) -> Summary {
         .map(|s| s.program_account_id)
         .collect();
     let data = &message.instruction_data;
-    let token_program = programs::token_account_id();
+    let token_program = token_core::token_account_id();
     // A decoder describes the bytes only when every row selects the shard it
     // assumes; anything else is shown as unknown.
     let decoded = match decoders.get(program) {
@@ -423,7 +426,7 @@ fn token(data: &[u8], accounts: &[AccountId], program: AccountId) -> Option<Summ
         _ => return None,
     };
     let mut s = s;
-    if program != programs::token_account_id() {
+    if program != token_core::token_account_id() {
         s.lines.push(format!(
             "Runs on a token program at {}, not the builtin one",
             short(&program)
@@ -446,7 +449,7 @@ fn ata(data: &[u8], accounts: &[AccountId]) -> Option<Summary> {
     | I::Burn {
         token_program_id, ..
     }) = &instruction;
-    if *token_program_id != programs::token_account_id() {
+    if *token_program_id != token_core::token_account_id() {
         return None;
     }
     let s = match (instruction, accounts) {
@@ -551,7 +554,7 @@ pub enum PublicEffect {
 
 /// The public effects of a proved private transaction, in message order.
 pub fn private_effects(message: &PrivateMessage) -> Vec<PublicEffect> {
-    let token_program = programs::token_account_id();
+    let token_program = token_core::token_account_id();
     let mut out = Vec::new();
     for action in &message.public_actions {
         let account = action.account_id.to_string();
@@ -679,7 +682,7 @@ mod tests {
             },
         })
         .unwrap();
-        let s = public(&msg(programs::token_account_id(), &[a, b], data), &d);
+        let s = public(&msg(token_core::token_account_id(), &[a, b], data), &d);
         assert_eq!(
             s.outflows[0].asset,
             Asset::Token {
@@ -702,7 +705,7 @@ mod tests {
         assert!(public(&m, &d).unknown);
 
         // An ATA transfer that hands the PDA authority to a non-builtin token program.
-        let ata = programs::ata_account_id();
+        let ata = associated_token_account_core::ata_account_id();
         let data =
             Program::serialize_instruction(associated_token_account_core::Instruction::Transfer {
                 token_program_id: AccountId::new([7; 32]),
@@ -713,7 +716,7 @@ mod tests {
                 amount: 1,
             })
             .unwrap();
-        let token = programs::token_account_id();
+        let token = token_core::token_account_id();
         let m = PublicMessage::new_preserialized(
             ata,
             vec![
@@ -735,7 +738,10 @@ mod tests {
         let data =
             Program::serialize_instruction(token_core::Instruction::Mint { amount_to_mint: 1 })
                 .unwrap();
-        let s = public(&msg(programs::token_account_id(), &[def, holder], data), &d);
+        let s = public(
+            &msg(token_core::token_account_id(), &[def, holder], data),
+            &d,
+        );
         assert_eq!(s.authorities.len(), 1);
 
         let s = public(&msg(AccountId::new([8; 32]), &[def], vec![1, 2, 3]), &d);

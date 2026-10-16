@@ -28,11 +28,15 @@ key_protocol = { path = "vendor/lez/lee/key_protocol" }
 common = { path = "vendor/lez/lez/common" }
 sequencer_service_rpc = { path = "vendor/lez/lez/sequencer/service/rpc", features = ["client"] }
 programs = { path = "vendor/lez/lez/programs", default-features = false, features = ["artifacts"] }
-token_core = { path = "vendor/lez/lez/programs/token/core" }
-token_program = { path = "vendor/lez/lez/programs/token" }
-associated_token_account_core = { path = "vendor/lez/lez/programs/associated_token_account/core" }
+# LEZ v0.3.1 removed the token, ATA and AMM programs. Their v0.3.0 types
+# (lee_core is unchanged, so they still match) are kept in crates/lez-*.
+token_core = { path = "crates/lez-token-core" }
+token_program = { path = "crates/lez-token-program" }
+associated_token_account_core = { path = "crates/lez-ata-core" }
 program_loader_core = { path = "vendor/lez/lez/programs/program_loader/core" }
 risc0-binfmt = "3.0.2"
+# As LEZ declares it (associated_token_account_core hashes with its sha).
+risc0-zkvm = { version = "3.0.5", default-features = false, features = ["std"] }
 # Our testimonial program's shared types (the guest has its own workspace).
 testimonial_core = { path = "programs/testimonial/core" }
 borsh = "1.5.7"

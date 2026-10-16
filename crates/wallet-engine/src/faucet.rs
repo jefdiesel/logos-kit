@@ -168,7 +168,7 @@ impl KeyFaucet {
     /// treasury signs both, so they must not share a nonce). Returns the
     /// transaction hash; it doesn't wait for inclusion.
     pub async fn send_token(&self, def: AccountId, to: AccountId, amount: u128) -> Result<String> {
-        let token = programs::token_account_id();
+        let token = token_core::token_account_id();
         let own = self
             .client
             .get_account_view(ProgramShardSelector::new(to, token))

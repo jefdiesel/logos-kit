@@ -55,7 +55,7 @@ impl History {
             "refusing to scan {} blocks in one run",
             tip - history.scanned
         );
-        let client = core.helm_owned();
+        let client = core.client_owned();
         let mut start = history.scanned + 1;
         while start <= tip {
             let end = (start + CHUNK - 1).min(tip);

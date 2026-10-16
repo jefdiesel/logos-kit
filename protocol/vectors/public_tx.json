@@ -123,7 +123,7 @@
   ],
   "meta": {
     "generator": "cargo xtask vectors",
-    "lezRev": "db66590ab821a4e142c211017a3866d007f6fa77",
+    "lezRev": "1a003bfbfb89fcf987f62975cd08a401169e1b8c",
     "note": "Generated from LEZ code at lezRev. Do not edit by hand."
   },
   "prefix": "2f4c45452f76302e332f4d6573736167652f5075626c69632f00000000000000",
