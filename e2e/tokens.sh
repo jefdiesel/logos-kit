@@ -6,6 +6,8 @@
 #     shield, private → private, unshield;
 #   - native unshield; the builtin token program's header checks out;
 #   - an encrypted backup restores with its password.
+# LEZ v0.3.1 dropped the token, ATA and AMM programs from its builtins, so the
+# token stages run only on a chain that has them: LK_E2E_TOKENS=1.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,6 +24,7 @@ trap 'rm -rf "$LOGOS_KIT_HOME" "$RESTORED" "${STRANGER:-}"' EXIT
 export LK_GENESIS_KEY=7f273098f25b71e6c005a9519f2678da8d1c7f01f6a27778e2d9948abdf901fb
 field() { tail -1 | python3 -c "import sys,json; v=json.load(sys.stdin); print(eval('v'+sys.argv[1]))" "$1"; }
 check() { [[ "$2" == "$3" ]] || { echo "FAIL $1: got $2, want $3" >&2; exit 1; }; echo "ok   $1 = $2"; }
+TOKENS=${LK_E2E_TOKENS:-0}
 
 "$LK" init --json 2>/dev/null >/dev/null
 PUB=$("$LK" account new --json | field "['accountId']")
@@ -38,6 +41,8 @@ check "PUB native" "$("$LK" balance "$PUB" --json | field "['balance']")" 200000
 "$LK" faucet "$PRIV" --via "$PUB2" --key-env LK_GENESIS_KEY --drop 5000 --yes --json >/dev/null
 check "PRIV native (faucet → shield)" "$("$LK" balance "$PRIV" --json | field "['balance']")" 5000
 
+PUB3=$("$LK" account new --json | field "['accountId']")
+if [[ "$TOKENS" == 1 ]]; then
 # Demo token: a new definition account; all supply to PUB.
 DEF=$("$LK" token create --name DEMO --supply 1000000 --holder "$PUB" --yes --json | field "['definition']")
 check "PUB DEMO" "$("$LK" balance "$PUB" --token "$DEF" --json | field "['balance']")" 1000000
@@ -53,9 +58,9 @@ PRIV3=$("$LK" account new --private --json | field "['accountId']")
 check "private token send (from)" "$("$LK" balance "$PRIV2" --token "$DEF" --json | field "['balance']")" 30
 check "private token send (to)" "$("$LK" balance "$PRIV3" --token "$DEF" --json | field "['balance']")" 20
 
-PUB3=$("$LK" account new --json | field "['accountId']")
 "$LK" deshield --from "$PRIV3" --to "$PUB3" --token "$DEF" --amount 5 --yes --json >/dev/null
 check "token unshield" "$("$LK" balance "$PUB3" --token "$DEF" --json | field "['balance']")" 5
+fi
 
 "$LK" deshield --from "$PRIV" --to "$PUB3" --amount 1234 --yes --json >/dev/null
 check "native unshield" "$("$LK" balance "$PUB3" --json | field "['balance']")" 1234
@@ -82,6 +87,7 @@ print(' '.join(a['accountId'] for a in json.load(sys.stdin) if a['kind']=='priva
 done
 check "B received privately" "$B_SUM" 700
 
+if [[ "$TOKENS" == 1 ]]; then
 # Public token sends land in the recipient's token account (ATA) for that
 # token, created on arrival; tokens there are sent on through the ATA program.
 PUB4=$("$LK" account new --json | field "['accountId']")
@@ -132,9 +138,14 @@ rm -rf "$STRANGER"
 STATUS=$("$LK" program token --json | field "['status']")
 [[ "$STATUS" == verified_local ]] || { echo "FAIL token program status $STATUS" >&2; exit 1; }
 echo "ok   builtin token program header = $STATUS"
+fi
 
 "$LK" backup export "$RESTORED/backup.json"
 LOGOS_KIT_HOME="$RESTORED/home" "$LK" backup import "$RESTORED/backup.json" >/dev/null
-check "restored PUB DEMO" "$(LOGOS_KIT_HOME="$RESTORED/home" "$LK" balance "$PUB" --token "$DEF" --json | field "['balance']")" 999843
-
-echo "OK: S4 faucet + demo token on every route + backup (dev-mode proofs)"
+check "restored PUB native" "$(LOGOS_KIT_HOME="$RESTORED/home" "$LK" balance "$PUB" --json | field "['balance']")" "$("$LK" balance "$PUB" --json | field "['balance']")"
+if [[ "$TOKENS" == 1 ]]; then
+  check "restored PUB DEMO" "$(LOGOS_KIT_HOME="$RESTORED/home" "$LK" balance "$PUB" --token "$DEF" --json | field "['balance']")" 999843
+  echo "OK: S4 faucet + demo token on every route + backup (dev-mode proofs)"
+else
+  echo "OK: S4 faucet, native and private routes + backup (dev-mode proofs; LK_E2E_TOKENS=1 adds the token stages)"
+fi
