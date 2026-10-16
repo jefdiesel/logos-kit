@@ -132,19 +132,12 @@ pub fn image_hex(id: &[u32; 8]) -> String {
 }
 
 /// 0.3 builtins: name, address, image compiled from our pinned LEZ.
+///
+/// LEZ v0.3.1 dropped token, associated_token_account and amm from the
+/// builtin set (and from its source tree), so they are no longer listed: an
+/// account at their old builtin-derived address is just an unknown program.
 pub fn builtins() -> Vec<(&'static str, AccountId, [u32; 8])> {
     vec![
-        (
-            "token",
-            programs::token_account_id(),
-            programs::token().id(),
-        ),
-        (
-            "associated_token_account",
-            programs::ata_account_id(),
-            programs::ata().id(),
-        ),
-        ("amm", programs::amm_account_id(), programs::amm().id()),
         (
             "clock",
             programs::clock_account_id(),
@@ -588,11 +581,11 @@ mod tests {
 
     #[test]
     fn builtin_matches_or_mismatches_its_compiled_image() {
-        let token = programs::token_account_id();
-        let ok = classify(token, &header(programs::token().id(), true), &[], "z");
+        let clock = programs::clock_account_id();
+        let ok = classify(clock, &header(programs::clock().id(), true), &[], "z");
         assert!(ok.builtin);
         assert_ne!(ok.status, Status::Mismatch);
-        let bad = classify(token, &header([7; 8], true), &[], "z");
+        let bad = classify(clock, &header([7; 8], true), &[], "z");
         assert_eq!(bad.status, Status::Mismatch);
     }
 

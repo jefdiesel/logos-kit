@@ -8,7 +8,7 @@
 //! <data>/keys/vault.json            vault.v1 (password): phrase, zone keys, wallet metadata
 //! <data>/zones.json                 zone list hint for the lock screen (not trusted)
 //! <data>/zones/<zone>/vault.json    vault.v1 (keyed): LEZ Storage for that zone
-//! <data>/zones/<zone>/wallet_config.json, statistics.json
+//! <data>/zones/<zone>/wallet_config.json
 //! ```
 //!
 //! **Key hierarchy.** The password runs Argon2id once and opens the keys
@@ -209,10 +209,10 @@ impl DataDir {
         let dir = self.zone(&zone.id);
         private_dir(&dir)?;
         let config = WalletConfig {
-            sequencers: vec![SequencerConnectionData {
+            sequencer: SequencerConnectionData {
                 sequencer_addr: zone.sequencer.parse()?,
                 basic_auth: None,
-            }],
+            },
             // Upstream gives up after 5 polls 12 s apart. The official testnet
             // can take longer than a minute to include a transaction (seen
             // 2026-10-06: a program segment landed minutes after the wallet
@@ -830,18 +830,25 @@ impl Session {
         };
         // Keep the bytes: WalletCore::new consumes the storage even when it fails.
         let fallback = Zeroizing::new(storage.to_bytes()?);
-        match WalletCore::new_with_storage_backend(
+        // Since LEZ v0.3.1 building the WalletCore no longer talks to the
+        // sequencer (the multi-sequencer client that probed it is gone), so
+        // ask it for its health to keep "connected" meaning "reachable".
+        let core = match WalletCore::new_with_storage_backend(
             self.config_path.clone(),
             // LEZ installs a plaintext FileBackend at this path before swapping
             // in ours; point it somewhere nothing ever reads, never the vault.
             self.dir.join(".lez-storage-unused"),
-            self.dir.join("statistics.json"),
             None,
             storage,
             Box::new(Shared(Arc::clone(&self.backend))),
-        )
-        .await
-        {
+        ) {
+            Ok(core) => match core.client().check_health().await {
+                Ok(()) => Ok(core),
+                Err(e) => Err(anyhow::Error::from(e)),
+            },
+            Err(e) => Err(e),
+        };
+        match core {
             Ok(core) => {
                 self.link = Link::Online(Box::new(core));
                 Ok(())
@@ -1243,7 +1250,7 @@ impl Session {
     /// chain; private: no note found), then remember the counts.
     async fn finish_discovery(&mut self) -> Result<()> {
         let core = self.core_mut().context("not connected")?;
-        let client = core.helm_owned();
+        let client = core.client_owned();
         core.storage_mut()
             .key_chain_mut()
             .cleanup_trees_remove_uninit_layered(DISCOVERY_DEPTH, |id| {

@@ -1,0 +1,12 @@
+[package]
+name = "associated_token_account_core"
+description = "LEZ v0.3.0 associated token account types (removed from LEZ in v0.3.1), kept for the wallet engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+lee_core.workspace = true
+token_core.workspace = true
+borsh.workspace = true
+risc0-zkvm.workspace = true

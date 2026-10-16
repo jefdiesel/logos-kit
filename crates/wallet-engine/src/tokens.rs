@@ -126,14 +126,14 @@ const fn kind_name(k: TokenKind) -> &'static str {
 /// The ATA address of `owner` for `definition` under the builtin programs.
 pub fn ata_of(owner: AccountId, definition: AccountId) -> AccountId {
     get_associated_token_account_id(
-        &programs::ata_account_id(),
-        &compute_ata_seed(owner, definition, programs::token_account_id()),
+        &associated_token_account_core::ata_account_id(),
+        &compute_ata_seed(owner, definition, token_core::token_account_id()),
     )
 }
 
 /// A token definition's name, read from its definition account.
 pub async fn definition_name(core: &WalletCore, definition: AccountId) -> Option<String> {
-    let token = programs::token_account_id();
+    let token = token_core::token_account_id();
     let account = core
         .get_account_view(ProgramShardSelector::new(definition, token))
         .await
@@ -146,7 +146,7 @@ pub async fn definition_name(core: &WalletCore, definition: AccountId) -> Option
 }
 
 async fn public_holding(core: &WalletCore, id: AccountId) -> Result<Option<TokenHolding>> {
-    let token = programs::token_account_id();
+    let token = token_core::token_account_id();
     let account = core
         .get_account_view(ProgramShardSelector::new(id, token))
         .await?;
@@ -177,7 +177,7 @@ impl Session {
             .filter_map(|t| decode::account_id(t).ok())
             .collect();
         let core = self.core().context("not connected")?;
-        let token = programs::token_account_id();
+        let token = token_core::token_account_id();
         let mut out = Vec::new();
         for a in &accounts {
             let id = decode::account_id(&a.account_id)?;
@@ -249,7 +249,7 @@ pub fn create_token_intent(
     };
     Ok(crate::tx::Intent::Call {
         from: holder.to_owned(),
-        program: programs::token_account_id().to_string(),
+        program: token_core::token_account_id().to_string(),
         accounts: vec![signer(definition), signer(holder)],
         data: STANDARD.encode(data),
     })
@@ -266,7 +266,7 @@ pub enum TokenShard {
 
 /// Read `id`'s token-program shard.
 pub async fn read_token_shard(core: &WalletCore, id: AccountId) -> Result<TokenShard> {
-    let token = programs::token_account_id();
+    let token = token_core::token_account_id();
     let account = core
         .get_account_view(ProgramShardSelector::new(id, token))
         .await?;

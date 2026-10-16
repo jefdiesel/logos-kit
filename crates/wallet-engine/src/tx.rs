@@ -12,8 +12,6 @@
 //! proved message must have exactly the approved public effects (decoded by
 //! `decode.rs`), nonces and program images before it is signed.
 
-use std::collections::HashMap;
-
 use anyhow::{Context as _, Result, bail, ensure};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use lee::{
@@ -649,7 +647,7 @@ impl Session {
         } = built;
         if fee.payer.is_some() {
             // Informational only: the approval binds to max_fee, not these.
-            if let Ok(q) = core.helm_owned().get_fee_state().await {
+            if let Ok(q) = core.client().get_fee_state().await {
                 fee.base_fee_exec = Some(q.base_fee_exec);
                 if let Some((gas, (bytes, tip, exec_free))) = fee.gas_limit.zip(fee.sizing) {
                     let exec = if exec_free { 0 } else { u128::from(gas) };
@@ -914,7 +912,7 @@ impl Session {
             .unwrap_or(0)),
             Some(def) => {
                 let def = decode::account_id(def)?;
-                let token = programs::token_account_id();
+                let token = token_core::token_account_id();
                 let h = holding(&own_shard(core, id, private, token).await?)?;
                 let own = h
                     .filter(|h| h.definition_id() == def)
@@ -989,12 +987,12 @@ async fn prepare_transfer(
             None,
             Program::serialize_instruction(native_token::Instruction::Transfer { amount })
                 .map_err(|e| anyhow::anyhow!("encode transfer: {e:?}"))?,
-            ProgramWithDependencies::native(),
+            Some(ProgramWithDependencies::native()),
             None,
         ),
         Some(def) => {
             let def = decode::account_id(def)?;
-            let token_program = programs::token_account_id();
+            let token_program = token_core::token_account_id();
             let held = holding(&own_shard(core, from_id, from_private, token_program).await?)?;
             if !from_private
                 && held
@@ -1034,7 +1032,10 @@ async fn prepare_transfer(
                     descriptor,
                 })
                 .map_err(|e| anyhow::anyhow!("encode token transfer: {e:?}"))?,
-                ProgramWithDependencies::new(programs::token(), token_program, HashMap::new()),
+                // LEZ v0.3.1 no longer ships the token program's ELF (it left
+                // the builtin set), so a private token send can't be proved
+                // here; public sends only need the program's address.
+                None,
                 Some(check),
             )
         }
@@ -1099,9 +1100,9 @@ async fn prepare_transfer(
         let mut summary = decode::public(message, decoders);
         summary.signers = nonces.iter().map(|(id, _)| id.to_string()).collect();
         if let Some(holder) = lands_in {
-            summary
-                .lines
-                .extend(lands_in_lines(core, r.to_id, holder, programs::token_account_id()).await);
+            summary.lines.extend(
+                lands_in_lines(core, r.to_id, holder, token_core::token_account_id()).await,
+            );
         }
         Built {
             route: Some(Route::Public),
@@ -1128,6 +1129,9 @@ async fn prepare_transfer(
         } else {
             None
         };
+        let deps = deps.context(
+            "private token transfers aren't available: LEZ v0.3.1 no longer ships the token program",
+        )?;
         let tx = core
             .prepare_private(
                 mentions,
@@ -1416,7 +1420,7 @@ pub(crate) async fn recipient_holder(
     if kind != TokenKind::Fungible {
         return Ok(to);
     }
-    let own = holding(&own_shard(core, to, false, programs::token_account_id()).await?)?;
+    let own = holding(&own_shard(core, to, false, token_core::token_account_id()).await?)?;
     if own.is_some_and(|h| h.definition_id() == def) {
         return Ok(to);
     }
@@ -1455,7 +1459,7 @@ async fn lands_in_lines(
 /// (A fresh key account that was sent a token looks the same: a warning,
 /// not a refusal.)
 pub(crate) async fn maybe_token_account(core: &WalletCore, id: AccountId) -> bool {
-    let holds = own_shard(core, id, false, programs::token_account_id())
+    let holds = own_shard(core, id, false, token_core::token_account_id())
         .await
         .ok()
         .and_then(|b| holding(&b).ok().flatten())
@@ -1471,8 +1475,8 @@ async fn prepare_ata_transfer(
     def: AccountId,
     amount: u128,
 ) -> Result<Built> {
-    let token_program = programs::token_account_id();
-    let ata_program = programs::ata_account_id();
+    let token_program = token_core::token_account_id();
+    let ata_program = associated_token_account_core::ata_account_id();
     let ata = crate::tokens::ata_of(owner, def);
     let held = holding(&own_shard(core, ata, false, token_program).await?)?
         .filter(|h| h.definition_id() == def);

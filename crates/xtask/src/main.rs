@@ -19,7 +19,7 @@ use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 
 /// LEZ revision the vectors come from; must match the workspace `rev` pins.
-pub const LEZ_REV: &str = "db66590ab821a4e142c211017a3866d007f6fa77";
+pub const LEZ_REV: &str = "1a003bfbfb89fcf987f62975cd08a401169e1b8c";
 
 const DEFAULT_SEQUENCER: &str = "https://testnet.lez.logos.co";
 

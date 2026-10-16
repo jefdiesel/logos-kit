@@ -355,8 +355,8 @@ fn program_vectors() -> Result<Value> {
         "meta": meta(),
         "builtins": {
             "native": NATIVE_TOKEN_PROGRAM_ID.to_string(),
-            "token": programs::token_account_id().to_string(),
-            "associatedTokenAccount": programs::ata_account_id().to_string(),
+            "token": token_core::token_account_id().to_string(),
+            "associatedTokenAccount": associated_token_account_core::ata_account_id().to_string(),
             "programLoader": lee_core::program::PROGRAM_LOADER_ACCOUNT_ID.to_string(),
         },
         "nativeTransfer": { "amount": "12345678901234567890123", "data": hex::encode(native) },
@@ -369,8 +369,8 @@ fn program_vectors() -> Result<Value> {
             "owner": author.to_string(),
             "definition": definition.to_string(),
             "ata": associated_token_account_core::get_associated_token_account_id(
-                &programs::ata_account_id(),
-                &associated_token_account_core::compute_ata_seed(author, definition, programs::token_account_id()),
+                &associated_token_account_core::ata_account_id(),
+                &associated_token_account_core::compute_ata_seed(author, definition, token_core::token_account_id()),
             ).to_string(),
         },
     }))

@@ -634,7 +634,7 @@ impl Engine {
                 .filter_map(|a| crate::decode::account_id(&a.account_id).ok())
                 .collect();
             (
-                core.helm_owned(),
+                core.client_owned(),
                 mine,
                 s.decoders(),
                 s.zone().chain.clone(),
@@ -1717,11 +1717,11 @@ impl Engine {
         // transaction may still land (retrying could send it twice).
         // Wait for the block without the wallet lock (it can take minutes);
         // then record the result under it (the poll answers at once).
-        let pollers = self
-            .with_session_quiet(async |s| Ok(s.core().context("not connected")?.poller_vec()))
+        let poller = self
+            .with_session_quiet(async |s| Ok(s.core().context("not connected")?.poller()))
             .await;
-        let seen = match (pollers, tx_hash.parse()) {
-            (Ok(pollers), Ok(hash)) => wallet::poller::multi_poll(pollers, hash).await.map(|_| ()),
+        let seen = match (poller, tx_hash.parse()) {
+            (Ok(poller), Ok(hash)) => poller.poll_tx(hash).await.map(|_| ()),
             (Err(e), _) => Err(e),
             (_, Err(_)) => Err(anyhow::anyhow!("bad transaction hash")),
         };
